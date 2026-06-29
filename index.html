@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Tani ✨</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            overflow: hidden;
+            background-color: #050B14;
+            color: #ffffff;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* --- FLOATING AUDIO CONTROLLER --- */
+        .audio-player-widget {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 50px;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: none;
+        }
+        .music-toggle-btn {
+            background: #ffffff;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .track-metadata {
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+        }
+
+        /* --- MICROSITE ENTRY GATE --- */
+        #gate-screen {
+            position: fixed;
+            inset: 0;
+            background: #050B14;
+            z-index: 3000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        .gate-btn {
+            background: transparent;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 16px 40px;
+            font-size: 1rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-radius: 50px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+        }
+        .gate-btn:hover { border-color: #ffffff; background: rgba(255, 255, 255, 0.05); }
+
+        /* --- LAYER VIEWPORT ENGINE --- */
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transform: scale(1.02);
+            overflow-y: auto; /* Fallback support for small viewports */
+        }
+        .page.active {
+            display: flex;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .action-btn {
+            margin-top: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 32px;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+        .action-btn:hover { background: #ffffff; color: #000000; }
+
+        /* PAGE 1 - MOBILE FIXES STYLES */
+        #page-1 { background-color: #070B19; justify-content: center; }
+        .p1-title {
+            font-size: calc(1.8rem + 1.5vw);
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -1px;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 4px 4px 0px rgba(255, 255, 255, 0.9);
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        .profile-frame {
+            width: min(150px, 35vw);
+            height: min(150px, 35vw);
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        .profile-pic { width: 100%; height: 100%; object-fit: cover; }
+        .letter-wrap {
+            width: 100%;
+            max-width: 380px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            max-height: 40%;
+            overflow-y: auto; /* Scroll text if screen is super short */
+        }
+        .letter-text { color: rgba(255, 255, 255, 0.85); font-size: 0.9rem; line-height: 1.6; text-align: left; }
+        .star-particle {
+            position: absolute;
+            top: -20px;
+            pointer-events: none;
+            animation: fall linear forwards;
+            z-index: 1;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* PAGE 2 */
+        #page-2 { background-color: #0A192F; position: relative; }
+        .orange-sticker {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.35;
+            animation: floatSticker 4s ease-in-out infinite alternate;
+        }
+        @keyframes floatSticker { 0% { transform: translateY(0) rotate(0deg); } 100% { transform: translateY(-15px) rotate(15deg); } }
+        .burst-container { position: relative; height: 60px; }
+        .burst-title {
+            font-size: calc(1.6rem + 1.5vw); color: #ffffff; font-weight: 900;
+            animation: textSparkleBurst 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+        @keyframes textSparkleBurst {
+            0% { transform: scale(0.3); opacity: 0; filter: blur(8px); }
+            25% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 20px #fff); }
+            50% { transform: scale(1.0); opacity: 1; filter: drop-shadow(0 0 30px #FFD700); }
+            85% { transform: scale(1.3); opacity: 0.4; filter: blur(4px); }
+            100% { transform: scale(1.6); opacity: 0; visibility: hidden; }
+        }
+        .cake-reveal-box {
+            display: flex; flex-direction: column; align-items: center; opacity: 0; transform: translateY(20px);
+            animation: showCakeDelayed 1.2s cubic-bezier(0.25, 1, 0.5, 1) 2.2s forwards;
+        }
+        @keyframes showCakeDelayed { to { opacity: 1; transform: translateY(0); } }
+        .cake-art-tier {
+            position: relative; width: 180px; height: 100px; background: #ffffff; border-radius: 20px 20px 10px 10px;
+        }
+        .cake-art-tier::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 22px; background: #FFF0F5; border-radius: 20px 20px 15px 15px;
+        }
+        .cake-line { position: absolute; width: 100%; height: 6px; background: #FF6B81; top: 50px; }
+        .candles-grid { position: absolute; top: -20px; width: 100%; display: flex; justify-content: space-between; padding: 0 12px; }
+        .candle-stick { width: 4px; height: 22px; background: linear-gradient(to bottom, #FF7675, #6C5CE7); position: relative; }
+        .fire {
+            width: 6px; height: 10px; background: #FFD700; border-radius: 50% 50% 20% 20%; position: absolute; top: -10px; left: -1px;
+            box-shadow: 0 0 12px #FFD700; animation: wave 0.2s infinite alternate;
+        }
+        .fire.extinguished { opacity: 0; transform: scale(0); transition: all 0.3s ease; }
+        @keyframes wave { 0% { transform: skewX(-2deg); } 100% { transform: skewX(2deg); } }
+        .sparkle-bit { position: absolute; pointer-events: none; background: white; border-radius: 50%; animation: spray 1.5s ease-out forwards; }
+        @keyframes spray { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
+
+        /* PAGE 3 - AMBIENT NEON SUPERNOVA SPACE */
+        #page-3 { background: radial-gradient(circle at center, #080f26 0%, #02040a 100%); cursor: grab; }
+        #canvas-viewport { position: absolute; inset: 0; z-index: 1; }
+        .p3-label {
+            position: absolute; top: 20px; right: 20px; color: rgba(255,255,255,0.8);
+            font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; z-index: 10; text-align: right;
+        }
+
+        /* PAGE 4 - LUXURY MONOCHROME SILK BACKDROP WITH FLOATING ROSES */
+        #page-4 { 
+            background: linear-gradient(135deg, #111113 0%, #2c2d35 45%, #e1e2e7 100%); 
+            position: relative; 
+        }
+        
+        /* Floating Roses Framework */
+        .rose-petal {
+            position: absolute;
+            top: -50px;
+            pointer-events: none;
+            font-size: 1.5rem;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            animation: driftRose linear forwards;
+            z-index: 2;
+        }
+        @keyframes driftRose {
+            0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(105vh) translateX(var(--drift-x)) rotate(var(--drift-r)); opacity: 0; }
+        }
+        
+        /* Game Styling */
+        .game-section {
+            display: flex; flex-direction: column; align-items: center; z-index: 10; width: 100%;
+        }
+        .game-title { font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; color: #111113; font-weight: 700; }
+        .grid-container {
+            display: grid; grid-template-columns: repeat(4, min(60px, 20vw)); gap: 8px; margin-bottom: 20px;
+        }
+        .card {
+            width: min(60px, 20vw); height: min(60px, 20vw); background: #12131a; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; display: flex; justify-content: center; align-items: center;
+            font-size: 1.3rem; cursor: pointer; transform-style: preserve-3d; transition: transform 0.4s;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+        .card.flipped { transform: rotateY(180deg); background: #1c1e29; border-color: rgba(212,175,55,0.4); }
+        .card .front-face { display: none; }
+        .card.flipped .front-face { display: block; }
+
+        /* Premium Dark-Luxe Gift Box Setup */
+        .gift-wrapper { display: none; flex-direction: column; align-items: center; animation: fadeIn 1s ease forwards; z-index: 10; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .gift-container {
+            position: relative; width: 120px; height: 120px; cursor: pointer; margin-top: 10px;
+        }
+        .gift-box {
+            position: absolute; width: 100%; height: 100%; background: #111215;
+            border-radius: 12px; box-shadow: 0 25px 50px rgba(0,0,0,0.8); border: 2px solid #D4AF37;
+        }
+        .gift-box::before { content: ''; position: absolute; top: 0; left: 49px; width: 22px; height: 100%; background: #D4AF37; }
+        .gift-box::after { content: ''; position: absolute; top: 49px; left: 0; width: 100%; height: 22px; background: #D4AF37; }
+        .gift-lid {
+            position: absolute; width: 108%; height: 30px; background: #16181d;
+            top: -18px; left: -4%; border-radius: 8px; z-index: 2; border: 2px solid #D4AF37;
+            transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .gift-lid::before { content: ''; position: absolute; top: 0; left: 51px; width: 22px; height: 100%; background: #D4AF37; }
+        .gift-bow {
+            position: absolute; top: -32px; left: 42px; width: 36px; height: 22px;
+            background: #D4AF37; border-radius: 50px; z-index: 3; transition: all 0.5s ease;
+        }
+        .gift-container.opened .gift-lid { transform: translateY(-70px) rotate(-35deg) scale(0.7); opacity: 0; }
+        .gift-container.opened .gift-bow { transform: translateY(-80px) scale(0); opacity: 0; }
+        
+        .reveal-card {
+            position: absolute; width: min(300px, 85vw); background: rgba(12, 13, 17, 0.95); border: 2px solid #D4AF37;
+            padding: 25px 20px; border-radius: 20px; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.7); opacity: 0; visibility: hidden; z-index: 500;
+            box-shadow: 0 40px 90px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .reveal-card.visible { opacity: 1; visibility: visible; transform: translate(-50%, -30%) scale(1); }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-audio" loop preload="auto">
+        <source src="song.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="audio-player-widget" id="music-widget">
+        <button class="music-toggle-btn" onclick="toggleAudioPlayback()">
+            <span id="music-btn-icon">⏸</span>
+        </button>
+        <div class="track-metadata">Gopon Premika 🎵</div>
+    </div>
+
+    <div id="gate-screen">
+        <button class="gate-btn" onclick="unlockExperience()">Enter Experience</button>
+    </div>
+
+    <div class="page active" id="page-1">
+        <h1 class="p1-title">Happy Birthday</h1>
+        <div class="profile-frame">
+            <img src="image.jpg" alt="Tani" class="profile-pic">
+        </div>
+        <div class="letter-wrap">
+            <p class="letter-text">
+                Happy Birthday,Tani.I know how hard its been for you but this day belongs to you and you deserve more.Never doubt yourself for what you are,your totally perfect.I know its not that fancy but consider this worthless thing as a small gift from your friend.
+            </p>
+        </div>
+        <button class="action-btn" onclick="slideScene(1, 2)">Continue</button>
+    </div>
+
+    <div class="page" id="page-2">
+        <div class="orange-sticker" style="top: 10%; left: 8%;">🍊</div>
+        <div class="orange-sticker" style="top: 25%; right: 10%;">🍊</div>
+        <div class="burst-container">
+            <h2 class="burst-title" id="p2-title-text">Happy Birthday</h2>
+        </div>
+        <div class="cake-reveal-box">
+            <div class="cake-art-tier">
+                <div class="candles-grid" id="candles-container"></div>
+                <div class="cake-line"></div>
+            </div>
+            <button class="action-btn" id="blow-trigger" onclick="blowCandles()">Blow out the candles!</button>
+            <button class="action-btn" id="p2-advance" style="display:none;" onclick="slideScene(2, 3)">Enter Her Galaxy →</button>
+        </div>
+    </div>
+
+    <div class="page" id="page-3">
+        <div id="canvas-viewport"></div>
+        <div class="p3-label">
+            visual image of how you look <br>
+            <span style="font-size:10px; opacity:0.6; font-weight:300;">(Drag/Swipe to explore 360° Neon Supernova)</span>
+        </div>
+        <button class="action-btn" style="position:absolute; bottom:30px; right:20px; margin:0; z-index: 100;" onclick="slideScene(3, 4)">Final Page →</button>
+    </div>
+
+    <div class="page" id="page-4">
+        
+        <div class="game-section" id="puzzle-stage">
+            <h3 class="game-title">✨ Match the stars to unlock your gift ✨</h3>
+            <div class="grid-container" id="card-matrix"></div>
+        </div>
+
+        <div class="gift-wrapper" id="gift-stage">
+            <div class="gift-container" id="gift-box-element" onclick="openGiftBox()">
+                <div class="gift-bow"></div>
+                <div class="gift-lid"></div>
+                <div class="gift-box"></div>
+            </div>
+        </div>
+
+        <div class="reveal-card" id="gift-message-card">
+            <p style="font-size:1.05rem; font-weight:400; line-height:1.7; color:#fff; letter-spacing:0.3px;">
+                hope you get everything you wish for in life and never stop smiling! Again wish you the happiest birthday from Muhtasin. ✨🤍
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const audioTrack = document.getElementById('bg-audio');
+        const playIcon = document.getElementById('music-btn-icon');
+        let roseInterval;
+
+        function unlockExperience() {
+            document.getElementById('gate-screen').style.opacity = '0';
+            setTimeout(() => { 
+                document.getElementById('gate-screen').style.visibility = 'hidden'; 
+                document.getElementById('music-widget').style.display = 'flex';
+            }, 800);
+            audioTrack.play().then(() => { playIcon.innerText = "⏸"; }).catch(e => { playIcon.innerText = "▶"; });
+            setInterval(createFallingStars, 140);
+        }
+
+        function toggleAudioPlayback() {
+            if(audioTrack.paused) { audioTrack.play(); playIcon.innerText = "⏸"; } else { audioTrack.pause(); playIcon.innerText = "▶"; }
+        }
+
+        function slideScene(fromId, toId) {
+            document.getElementById(`page-${fromId}`).classList.remove('active');
+            setTimeout(() => {
+                document.getElementById(`page-${toId}`).classList.add('active');
+                if(toId === 3) { setTimeout(initNeonSupernovaGalaxy, 50); }
+                if(toId === 4) { 
+                    initMiniGame(); 
+                    roseInterval = setInterval(spawnLuxuryRoses, 350);
+                }
+            }, 150);
+            if(fromId === 1) { triggerSparkleBurstEffect(); }
+            if(fromId === 4) { clearInterval(roseInterval); }
+        }
+
+        function createFallingStars() {
+            if (!document.getElementById('page-1').classList.contains('active')) return;
+            const star = document.createElement('div');
+            star.classList.add('star-particle');
+            star.innerText = ['✨', '⭐', '🌟'][Math.floor(Math.random() * 3)];
+            star.style.left = Math.random() * 100 + 'vw';
+            star.style.fontSize = (Math.random() * 0.8 + 0.6) + 'rem';
+            star.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            document.getElementById('page-1').appendChild(star);
+            setTimeout(() => star.remove(), 5000);
+        }
+
+        function spawnLuxuryRoses() {
+            if (!document.getElementById('page-4').classList.contains('active')) return;
+            const petal = document.createElement('div');
+            petal.classList.add('rose-petal');
+            petal.innerText = ['🌹', '🥀', '❤️'][Math.floor(Math.random() * 3)];
+            petal.style.left = Math.random() * 100 + 'vw';
+            petal.style.setProperty('--drift-x', (Math.random() * 160 - 80) + 'px');
+            petal.style.setProperty('--drift-r', (Math.random() * 360 + 180) + 'deg');
+            petal.style.animationDuration = (Math.random() * 4 + 4) + 's';
+            document.getElementById('page-4').appendChild(petal);
+            setTimeout(() => petal.remove(), 8000);
+        }
+
+        function triggerSparkleBurstEffect() {
+            setupCandles();
+            const titleBox = document.getElementById('p2-title-text');
+            setTimeout(() => {
+                for(let i=0; i<40; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('sparkle-bit');
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 160 + 60;
+                    particle.style.setProperty('--x', Math.cos(angle) * radius + 'px');
+                    particle.style.setProperty('--y', Math.sin(angle) * radius + 'px');
+                    particle.style.left = '50%'; particle.style.top = '50%';
+                    particle.style.width = (Math.random() * 4 + 3) + 'px';
+                    particle.style.height = particle.style.width;
+                    titleBox.appendChild(particle);
+                }
+            }, 1200);
+        }
+
+        function setupCandles() {
+            const container = document.getElementById('candles-container');
+            container.innerHTML = '';
+            for(let i=0; i<17; i++) {
+                const stick = document.createElement('div'); stick.classList.add('candle-stick');
+                const fire = document.createElement('div'); fire.classList.add('fire');
+                stick.appendChild(fire); container.appendChild(stick);
+            }
+        }
+
+        function blowCandles() {
+            document.querySelectorAll('.fire').forEach(f => f.classList.add('extinguished'));
+            document.getElementById('blow-trigger').style.display = 'none';
+            document.getElementById('p2-advance').style.display = 'inline-block';
+        }
+
+        // --- GIGANTIC NEON SUPERNOVA SYSTEM ---
+        let scene, camera, renderer, galaxyMesh;
+        let isMoving = false, lastPos = { x: 0, y: 0 };
+
+        function initNeonSupernovaGalaxy() {
+            const viewport = document.getElementById('canvas-viewport');
+            if(!viewport) return;
+            viewport.innerHTML = ''; 
+
+            try {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.set(0, 3, 5.5);
+                camera.lookAt(0, 0, 0);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                viewport.appendChild(renderer.domElement);
+
+                const count = 18000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const colors = new Float32Array(count * 3);
+
+                const neonCore = new THREE.Color('#FFFFFF'); 
+                const neonOrange = new THREE.Color('#FF4500'); 
+                const neonViolet = new THREE.Color('#9400D3'); 
+                const neonBlue = new THREE.Color('#00FFFF');
+
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const r = Math.pow(Math.random(), 1.3) * 5.5; 
+                    const spin = r * 2.8;
+                    const armAngle = ((i % 3) / 3) * Math.PI * 2; 
+
+                    const randomX = (Math.random() - 0.5) * 0.35 * r;
+                    const randomY = (Math.random() - 0.5) * 0.25 * r;
+                    const randomZ = (Math.random() - 0.5) * 0.35 * r;
+
+                    positions[i3] = Math.cos(armAngle + spin) * r + randomX;
+                    positions[i3 + 1] = randomY;
+                    positions[i3 + 2] = Math.sin(armAngle + spin) * r + randomZ;
+
+                    let mix;
+                    if(r < 1.2) {
+                        mix = neonCore.clone().lerp(neonBlue, r / 1.2);
+                    } else if (r < 3.0) {
+                        mix = neonBlue.clone().lerp(neonOrange, (r - 1.2) / 1.8);
+                    } else {
+                        mix = neonOrange.clone().lerp(neonViolet, (r - 3.0) / 2.5);
+                    }
+
+                    colors[i3] = mix.r; colors[i3 + 1] = mix.g; colors[i3 + 2] = mix.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.055, 
+                    sizeAttenuation: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending,
+                    vertexColors: true
+                });
+
+                galaxyMesh = new THREE.Points(geometry, material);
+                scene.add(galaxyMesh);
+
+                const containerElem = document.getElementById('page-3');
+                const onDragStart = (x, y) => { isMoving = true; lastPos = { x, y }; };
+                const onDragMove = (x, y) => {
+                    if (!isMoving || !galaxyMesh) return;
+                    galaxyMesh.rotation.y += (x - lastPos.x) * 0.007;
+                    galaxyMesh.rotation.x += (y - lastPos.y) * 0.007;
+                    lastPos = { x, y };
+                };
+
+                containerElem.addEventListener('mousedown', (e) => onDragStart(e.offsetX, e.offsetY));
+                containerElem.addEventListener('mousemove', (e) => onDragMove(e.offsetX, e.offsetY));
+                window.addEventListener('mouseup', () => isMoving = false);
+                containerElem.addEventListener('touchstart', (e) => onDragStart(e.touches[0].clientX, e.touches[0].clientY));
+                containerElem.addEventListener('touchmove', (e) => onDragMove(e.touches[0].clientX, e.touches[0].clientY));
+                window.addEventListener('touchend', () => isMoving = false);
+
+                function animate() {
+                    if (!document.getElementById('page-3').classList.contains('active')) return;
+                    requestAnimationFrame(animate);
+                    if(!isMoving) galaxyMesh.rotation.y += 0.003; 
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+            } catch (e) { console.log(e); }
+        }
+
+        /* --- MINI GAME ENGINE --- */
+        let deck = ['✨', '✨', '🎂', '🎂', '🧡', '🧡', '🎵', '🎵'];
+        let choiceA = null, choiceB = null, pairsFound = 0;
+        let lockGrid = false;
+
+        function initMiniGame() {
+            const container = document.getElementById('card-matrix');
+            container.innerHTML = '';
+            deck.sort(() => Math.random() - 0.5);
+            
+            deck.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.value = symbol;
+                card.dataset.id = index;
+                card.innerHTML = `<span class="front-face">${symbol}</span><span class="back-face">⭐</span>`;
+                card.addEventListener('click', flipCard);
+                container.appendChild(card);
+            });
+        }
+
+        function flipCard() {
+            if (lockGrid || this === choiceA) return;
+            this.classList.add('flipped');
+
+            if (!choiceA) {
+                choiceA = this;
+                return;
+            }
+            choiceB = this;
+            evalMatch();
+        }
+
+        function evalMatch() {
+            lockGrid = true;
+            if (choiceA.dataset.value === choiceB.dataset.value) {
+                pairsFound++;
+                resetSelection();
+                if (pairsFound === 4) {
+                    setTimeout(() => {
+                        document.getElementById('puzzle-stage').style.display = 'none';
+                        document.getElementById('gift-stage').style.display = 'flex';
+                    }, 800);
+                }
+            } else {
+                setTimeout(() => {
+                    choiceA.classList.remove('flipped');
+                    choiceB.classList.remove('flipped');
+                    resetSelection();
+                }, 1000);
+            }
+        }
+
+        function resetSelection() { choiceA = null; choiceB = null; lockGrid = false; }
+
+        /* --- LUXURY GIFT UNBOXING --- */
+        function openGiftBox() {
+            document.getElementById('gift-box-element').classList.add('opened');
+            setTimeout(() => { document.getElementById('gift-message-card').classList.add('visible'); }, 600);
+        }
+
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
+    </script>
+</body>
+</html>
